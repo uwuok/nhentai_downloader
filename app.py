@@ -22,11 +22,11 @@ def download_gallery():
     下載指定 nhentai 畫廊
     """
     # os.chdir(os.path.abspath(os.path.dirname(__file__)))
-
     # 六位數 = input('請輸入神的六位數：')
-    六位數 = six_digits.get()
+    
+    six_digits = re.search(r'\d+', input_str.get()).group()
     # 目標 URL
-    url = f"https://nhentai.net/g/{六位數}/"
+    url = f"https://nhentai.net/g/{six_digits}/"
     
     # 下載網頁內容
     response = requests.get(url)
@@ -147,13 +147,13 @@ if __name__ == '__main__':
     form.columnconfigure(2, weight=0)  # Button 的列（小比例，固定寬度）
 
     # Label 元件 (改用 ttk.Label)
-    url_label = ttk.Label(form, text='神的六位數字：')
+    url_label = ttk.Label(form, text='神的六位數字或網址：')
     url_label.grid(row=0, column=0, padx=(5, 10), pady=10, sticky='e')
 
     # Entry 元件 (改用 ttk.Entry)
-    six_digits = ttk.Entry(form)  # 單行輸入框
-    # six_digits.insert(0, '')
-    six_digits.grid(row=0, column=1, padx=10, pady=10, sticky='we')
+    # 支持 nhentai 的 url 或是六位數字
+    input_str = ttk.Entry(form)  # 單行輸入框
+    input_str.grid(row=0, column=1, padx=10, pady=10, sticky='we')
 
     # Button 元件 (改用 ttk.Button)
     button = ttk.Button(form, text='抓取', command=download_gallery)
