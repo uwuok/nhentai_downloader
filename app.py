@@ -6,11 +6,20 @@ import re
 from tkinter import filedialog
 from tkinter import ttk
 from tkinter import scrolledtext
+from tkinter import messagebox
 
 
-def sanitize_folder_name(folder_name):
-    # 由於 gallery 的標題有可能出現一些不合法的 folder 名稱，因此需要將其作替換。
-    # 以 539127 為例
+def sanitize_folder_name(folder_name: str) -> str:
+    """
+    清理文件名稱，替換不合法的字元為下劃線(_)
+
+    Args:
+        folder_name (str): 原始文件名稱
+
+    Returns:
+        str: 替換後文件名稱
+    """
+    # 由於 gallery 的標題如(539127)有可能出現一些不合法的 folder 名稱，因此需要將其作替換。
     invalid_chars = r'<>:"/\|?*'
     for char in invalid_chars:
         # 將不合法的 char 替換成 "-"
@@ -24,43 +33,66 @@ def batch_download():
     https://nhentai.net/g/546088/
     546321
     '''
-    batch_input = scrolled_text.get('1.0', tk.END).strip().splitlines()
-    six_digits_list = [re.search(r'\d+', line).group() for line in batch_input if re.search(r'\d+', line)]
     
-    # 讓讀者選擇保存圖片的資料夾
-    # root = tk.Tk() 
-    # root.withdraw()
-    base_download_folder = filedialog.askdirectory(title='選擇保存圖片的資料夾')
-    if not base_download_folder:
-        print('未選擇資料夾，下載中止。')
-        return 
+    """
+    批量下載功能，允許輸入多個神的六位數或是網址下載對應的畫廊
+    彈出選擇下載資料夾的視窗，供使用者指定下載的位置。
+    """
+    try:
+        batch_input = scrolled_text.get('1.0', tk.END).strip().splitlines()
+        six_digits_list = [re.search(r'\d+', line).group() for line in batch_input if re.search(r'\d+', line)]
+    
+        # 讓讀者選擇保存圖片的資料夾
+        # root = tk.Tk() 
+        # root.withdraw()
+        base_download_folder = filedialog.askdirectory(title='選擇保存圖片的資料夾')
+        if not base_download_folder:
+            # print('未選擇資料夾，下載中止。')
+            messagebox.showinfo('未選擇下載資料夾，下載中止。')
+            return 
 
-    # 批次處理每個神秘六位數 
-    for six_digits in six_digits_list:
-        download_gallery(six_digits, base_download_folder, is_Batch=True)
+        # 批次處理每個神秘六位數 
+        for six_digits in six_digits_list:
+            download_gallery(six_digits, base_download_folder, is_batch=True)
+    except Exception as e:
+        messagebox.showerror(f'進行批量下載時發生錯誤：{e}')
+        return
+    
+    messagebox.showinfo('完成', '下載已完成！')
         
 
 def single_download():
-    # root = tk.Tk() 
-    # root.withdraw()
-    base_download_folder = filedialog.askdirectory(title='選擇保存圖片的資料夾')
-    six_digits = re.search(r'\d+', input_str.get()).group()
-    if not base_download_folder:
-        print('未選擇資料夾，下載中止。')
-        return
-    download_gallery(six_digits, base_download_folder, is_Batch=False)
+    """
+    單檔下載功能，允許使用者輸入一個神的六位數或是網址並下載對應的畫廊
     
-    # root.destroy()
+    彈出選擇下載資料夾之視窗，下載單個畫廊。
+    """
+
+    try:
+        base_download_folder = filedialog.askdirectory(title='選擇保存圖片的資料夾')
+        six_digits = re.search(r'\d+', input_str.get()).group()
+        if not base_download_folder:
+            # print('未選擇資料夾，下載中止。')
+            messagebox.showerror('錯誤', '未選擇下載資料夾，下載中止。')
+            return
+        download_gallery(six_digits, base_download_folder, is_batch=False)
+    except Exception as e:
+        messagebox.showerror('錯誤', f'進行單檔下載時發生錯誤：{e}')
+        return 
+    
+    messagebox.showinfo('完成', '下載已完成！')
 
 
-def download_gallery(six_digits, base_download_folder, is_Batch=False):
+def download_gallery(six_digits: str, base_download_folder: str, is_batch=False):
     """
-    下載指定 nhentai 畫廊
+    下載指定的畫廊，為每個畫廊獨立創建一個資料夾存放
+
+    Args:
+        six_digits (str): 神的六位數
+        base_download_folder (str): 使用者選擇存放的位置
+        is_batch (bool, optional): 判斷是否為批量下載. 預設為 False
     """
-    # os.chdir(os.path.abspath(os.path.dirname(__file__)))
-    # 六位數 = input('請輸入神的六位數：')
     
-    # six_digits = re.search(r'\d+', input_str.get()).group()
     # 目標 URL
     url = f"https://nhentai.net/g/{six_digits}/"
     
@@ -81,6 +113,8 @@ def download_gallery(six_digits, base_download_folder, is_Batch=False):
     else:
         print("無法找到標題，無法建立資料夾。")
         return
+        # raise ValueError
+        
 
     # 創建新資料夾
     download_folder = os.path.join(base_download_folder, sanitize_folder_name(folder_name))
@@ -112,7 +146,7 @@ def download_gallery(six_digits, base_download_folder, is_Batch=False):
                 
     # 根據指定的下載全部頁面
     start = 1
-    if not is_Batch:
+    if not is_batch:
         tags = str(soup.findAll('span', class_='tags'))
         # tags = str(soup.findAll('a', class_="tag"))
         total_pages = int(re.findall(r'<span class="name">(\d+)<\/span>', tags)[0])
@@ -124,13 +158,16 @@ def download_gallery(six_digits, base_download_folder, is_Batch=False):
             start = int(start_page.get()) if start_page.get() != '' else 1
             end = int(end_page.get()) if end_page.get() != '' else total_pages
         except ValueError:
-            print('頁碼必須為整數。')
-            return
+            # print('頁碼必須為整數。')
+            messagebox.showwarning('警告', '頁碼必須為整數')
+            raise ValueError
         
         # 驗證頁碼範圍
         if start < 1 or end > len(image_urls) or start > end:
-            print('頁碼範圍不正確，請重新檢查。')
-            return
+            # print('頁碼範圍不正確，請重新檢查。')
+            messagebox.showwarning('警告', '頁碼範圍不正確，請重新檢查。')
+            raise ValueError
+            # return
         selected_image_urls = image_urls[start - 1: end]
     else:
         selected_image_urls = image_urls
