@@ -28,8 +28,8 @@ def batch_download():
     six_digits_list = [re.search(r'\d+', line).group() for line in batch_input if re.search(r'\d+', line)]
     
     # 讓讀者選擇保存圖片的資料夾
-    root = tk.Tk() 
-    root.withdraw()
+    # root = tk.Tk() 
+    # root.withdraw()
     base_download_folder = filedialog.askdirectory(title='選擇保存圖片的資料夾')
     if not base_download_folder:
         print('未選擇資料夾，下載中止。')
@@ -39,11 +39,10 @@ def batch_download():
     for six_digits in six_digits_list:
         download_gallery(six_digits, base_download_folder, is_Batch=True)
         
-    root.destroy()
 
 def single_download():
-    root = tk.Tk() 
-    root.withdraw()
+    # root = tk.Tk() 
+    # root.withdraw()
     base_download_folder = filedialog.askdirectory(title='選擇保存圖片的資料夾')
     six_digits = re.search(r'\d+', input_str.get()).group()
     if not base_download_folder:
@@ -51,7 +50,7 @@ def single_download():
         return
     download_gallery(six_digits, base_download_folder, is_Batch=False)
     
-    root.destroy()
+    # root.destroy()
 
 
 def download_gallery(six_digits, base_download_folder, is_Batch=False):
