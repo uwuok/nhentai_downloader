@@ -106,6 +106,8 @@ def download_gallery(six_digits, base_download_folder, is_Batch=False):
                 page = img_url.split("/")[-1].replace("t", "")  # 頁碼
                 # 檢查後綴格式，避免重複拼接
                 new_url = f"{base_url}{img_id}/{page}"  # 構建新的 URL
+                # 使用 re 移除重複的 .webp
+                new_url = re.sub(r'\.webp(\.webp)+$', '.webp', new_url)
                 print(f'constructed url: {new_url}')
                 image_urls.append(new_url)
                 
@@ -149,6 +151,7 @@ def download_gallery(six_digits, base_download_folder, is_Batch=False):
                 print(f"成功下載: {img_name}")
         except Exception as e:
             print(f"下載 {img_url} 失敗: {e}")
+    print(f'{folder_name}: 下載完成。')
 
         
     
