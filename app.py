@@ -5,6 +5,7 @@ import tkinter as tk
 import re
 import sqlite3
 import unicodedata
+import threading
 from tkinter import filedialog
 from tkinter import ttk
 from tkinter import scrolledtext
@@ -29,6 +30,19 @@ def sanitize_folder_name(folder_name: str) -> str:
         folder_name = folder_name.replace(char, '_')
     return folder_name
 
+
+def batch_download_thread():
+    """
+    在背景中執行序中執行批量下載
+    """
+    threading.Thread(target=batch_download, daemon=True).start()
+    
+def single_download_thread():
+    """
+    在背景執行序中執行單檔下載
+    """
+    threading.Thread(target=single_download, daemon=True).start()
+    
 
 def batch_download():
     '''batch_input:
@@ -375,7 +389,7 @@ if __name__ == '__main__':
     input_str.grid(row=0, column=1, padx=10, pady=10, sticky='we')
 
     # Button 元件 (改用 ttk.Button)
-    button = ttk.Button(page1, text='抓取', command=single_download)
+    button = ttk.Button(page1, text='抓取', command=single_download_thread)
     button.grid(row=0, column=2, padx=10, pady=10, sticky='w')
     
     # 下載起始頁數選擇
@@ -406,7 +420,7 @@ if __name__ == '__main__':
     batch_url_label = ttk.Label(page2, text='以行為單位填入網址或數字：')
     batch_url_label.grid(row=0, column=0, padx=5, pady=5, sticky='w')
     
-    batch_button = ttk.Button(page2, text='批量下載', command=batch_download)
+    batch_button = ttk.Button(page2, text='批量下載', command=batch_download_thread)
     batch_button.grid(row=0, column=1, padx=5, pady=5, sticky='w')
 
     # ScrolledText 元件
