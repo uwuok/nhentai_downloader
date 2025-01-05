@@ -333,7 +333,7 @@ def view_history():
     
     # 顯示標籤設定
     headers = ['ID', '名稱', '下載日期', '狀態']
-    widths = [5, 120, 14, 8]
+    widths = [5, 120, 28, 8]
     header_line = ''.join(pad_to_width(header, width) for header, width in zip(headers, widths))
     history_text.insert(tk.END, header_line + '\n')
     history_text.insert(tk.END, '-' * sum(widths) + '\n')
@@ -345,6 +345,8 @@ def view_history():
         )
         print(line)
         history_text.insert(tk.END, line + '\n')
+    history_text.insert(tk.END, '-' * sum(widths) + '\n')
+    history_text.insert(tk.END, '\n')
     
     # print("\nDownload History:")
     # print("ID | Gallery Name | Download Date | Status")
