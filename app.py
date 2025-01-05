@@ -3,10 +3,13 @@ from bs4 import BeautifulSoup
 import os
 import tkinter as tk
 import re
+import sqlite3
+import unicodedata
 from tkinter import filedialog
 from tkinter import ttk
 from tkinter import scrolledtext
 from tkinter import messagebox
+from datetime import datetime
 
 
 def sanitize_folder_name(folder_name: str) -> str:
@@ -39,7 +42,7 @@ def batch_download():
     彈出選擇下載資料夾的視窗，供使用者指定下載的位置。
     """
     try:
-        batch_input = scrolled_text.get('1.0', tk.END).strip().splitlines()
+        batch_input = batch_text.get('1.0', tk.END).strip().splitlines()
         six_digits_list = [re.search(r'\d+', line).group() for line in batch_input if re.search(r'\d+', line)]
     
         # 讓讀者選擇保存圖片的資料夾
@@ -105,6 +108,10 @@ def download_gallery(six_digits: str, base_download_folder: str, is_batch=False)
 
     # 找到標題部分
     title_tag = soup.find('h1', class_='title')
+    # 如果未找到 title_tag 則以 six_digits 作為 folder_name
+    folder_name = sanitize_folder_name(title_tag.text if title_tag else six_digits)
+    # 在 DB 中新增紀錄(狀態為"下載中")
+    record_id = add_record(folder_name, '下載中')
     if title_tag:
         before = title_tag.find('span', class_='before').text if title_tag.find('span', class_='before') else ''
         pretty = title_tag.find('span', class_='pretty').text if title_tag.find('span', class_='pretty') else ''
@@ -112,9 +119,9 @@ def download_gallery(six_digits: str, base_download_folder: str, is_batch=False)
         folder_name = f"{before}{pretty}{after}"  # 拼接三個字串作為資料夾名稱
     else:
         print("無法找到標題，無法建立資料夾。")
+        update_record(record_id, '下載失敗')
         return
         # raise ValueError
-        
 
     # 創建新資料夾
     download_folder = os.path.join(base_download_folder, sanitize_folder_name(folder_name))
@@ -144,7 +151,7 @@ def download_gallery(six_digits: str, base_download_folder: str, is_batch=False)
                 print(f'constructed url: {new_url}')
                 image_urls.append(new_url)
                 
-    # 根據指定的下載全部頁面
+    # 下載指定範圍的頁面
     start = 1
     if not is_batch:
         tags = str(soup.findAll('span', class_='tags'))
@@ -160,12 +167,14 @@ def download_gallery(six_digits: str, base_download_folder: str, is_batch=False)
         except ValueError:
             # print('頁碼必須為整數。')
             messagebox.showwarning('警告', '頁碼必須為整數')
+            update_record(record_id, '下載失敗')
             raise ValueError
         
         # 驗證頁碼範圍
         if start < 1 or end > len(image_urls) or start > end:
             # print('頁碼範圍不正確，請重新檢查。')
             messagebox.showwarning('警告', '頁碼範圍不正確，請重新檢查。')
+            update_record(record_id, '下載失敗')
             raise ValueError
             # return
         selected_image_urls = image_urls[start - 1: end]
@@ -187,11 +196,152 @@ def download_gallery(six_digits: str, base_download_folder: str, is_batch=False)
                 print(f"成功下載: {img_name}")
         except Exception as e:
             print(f"下載 {img_url} 失敗: {e}")
+            update_record(record_id, '下載失敗')
+            return
     print(f'{folder_name}: 下載完成。')
+    update_record(record_id, '下載完成')
 
+
+def init_db():
+    """
+    資料庫初始化
+    """
+    conn = sqlite3.connect('download_history.db')
+    conn.row_factory = sqlite3.Row # 將結果轉換成字典
+    cursor = conn.cursor()
+    cursor.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            gallery_name TEXT NOT NULL,
+            download_date TEXT NOT NULL,
+            status TEXT NOT NULL
+        )
+        '''
+    )
+    conn.commit()
+    conn.close()
+    
+def add_record(gallery_name, status) -> int:
+    """
+    將 record 加入至 database 中，並回傳新增記錄的 id
+    Args:
+        gallery_name (str): 畫廊名稱
+        status (str): 下載狀態
+    Returns:
+        int: 新增記錄的 id
+    """
+    conn = sqlite3.connect('download_history.db')
+    cursor = conn.cursor()
+    try:
+        download_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cursor.execute('''INSERT INTO history (gallery_name, download_date, status) 
+                          VALUES (?, ?, ?)''', (gallery_name, download_date, status))
+        conn.commit()
+        record_id = cursor.lastrowid  # 獲取剛新增的記錄 id
+        return record_id
+    except sqlite3.Error as e:
+        print(f"新增記錄失敗：{e}")
+        return None
+    finally:
+        conn.close()
+    
+def update_record(record_id, status):
+    """
+    更新下載紀錄（根據 id）
+    Args:
+        record_id (int): 唯一識別符
+        status (str): 更新後的下載狀態
+    """
+    try:
+        conn = sqlite3.connect('download_history.db')
+        cursor = conn.cursor()
         
+        # 檢查 id 是否存在
+        cursor.execute('SELECT COUNT(*) FROM history WHERE id = ?', (record_id,))
+        count = cursor.fetchone()[0]
+        if count == 0:
+            print(f"記錄未找到：id = {record_id}")
+            return
+        # 更新狀態
+        cursor.execute('''UPDATE history SET status = ? WHERE id = ?''', (status, record_id))
+        conn.commit()
+        print(f"成功更新：id = {record_id} 狀態為 {status}")
+    except sqlite3.Error as e:
+        print(f"資料庫操作失敗：{e}")
+    finally:
+        conn.close()
+
+def view_history():
+    """
+    將歷史紀錄內容顯示至 GUI 上
+    """
+    conn = sqlite3.connect('download_history.db')
+    conn.row_factory = sqlite3.Row # 將結果轉換成字典
+    cursor = conn.cursor()
+    cursor.execute('''SELECT id, gallery_name, download_date, status FROM history''')
+    records = cursor.fetchall()
+    conn.close()
+    
+    # 沒有內容
+    if not records:
+        return
+    
+    def get_display_width(text: str) -> int:
+        """
+        計算字串的顯示長度，考慮全型和半型字元的情況
+
+        Args:
+            text (str): 字串
+
+        Returns:
+            int: 寬度
+        """
+        return sum(2 if unicodedata.east_asian_width(char) in 'WF' else 1 for char in text)
+    
+    def pad_to_width(text: str, width: int) -> str:
+        """
+        將字串填充到指定的寬度
+
+        Args:
+            text (str): 輸入字串
+            width (int): 寬度
+
+        Returns:
+            str: 調整過後的字串
+        """
+        
+        # 確保 text 是字串
+        text = str(text)
+        current_width = get_display_width(text)
+        padding = width - current_width
+        return text + ' ' * padding
+    
+    # 顯示標籤設定
+    headers = ['ID', '名稱', '下載日期', '狀態']
+    widths = [5, 120, 14, 8]
+    header_line = ''.join(pad_to_width(header, width) for header, width in zip(headers, widths))
+    history_text.insert(tk.END, header_line + '\n')
+    history_text.insert(tk.END, '-' * sum(widths) + '\n')
+    
+    for record in records:
+        line = ''.join(
+            pad_to_width(record[key], width) 
+            for key, width in zip(['id', 'gallery_name', 'download_date', 'status'], widths)
+        )
+        print(line)
+        history_text.insert(tk.END, line + '\n')
+    
+    # print("\nDownload History:")
+    # print("ID | Gallery Name | Download Date | Status")
+    # print("-" * 50)
+    # for record in records:
+    #     print(f"{record[0]} | {record[1]} | {record[2]} | {record[3]}")
+
     
 if __name__ == '__main__':
+    init_db()
+    
     form = tk.Tk()
     # 視窗標題
     form.title('nhentai downloader')
@@ -260,14 +410,27 @@ if __name__ == '__main__':
     batch_button.grid(row=0, column=1, padx=5, pady=5, sticky='w')
 
     # ScrolledText 元件
-    scrolled_text = scrolledtext.ScrolledText(page2, wrap='word')
-    scrolled_text.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky='nsew')
+    batch_text = scrolledtext.ScrolledText(page2, wrap='word')
+    batch_text.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky='nsew')
 
+    # third page: 下載紀錄
+    page3 = ttk.Frame(notebook)
+    notebook.add(page3, text='下載紀錄')
     
-    # third page: log 紀錄
-    # page3 = ttk.Frame(notebook)
-    # notebook.add(page3, text='Log')
+     # 調整行列配置
+    page3.rowconfigure(1, weight=1)  
+    page3.columnconfigure(0, weight=1)
     
+    # 配置寬高比例
+    batch_url_label = ttk.Label(page3, text='下載紀錄')
+    batch_url_label.grid(row=0, column=0, padx=5, pady=5, sticky='w')
+    
+    batch_button = ttk.Button(page3, text='獲取下載紀錄', command=view_history)
+    batch_button.grid(row=0, column=1, padx=5, pady=5, sticky='w')
+
+    # ScrolledText 元件
+    history_text = scrolledtext.ScrolledText(page3, wrap='word')
+    history_text.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky='nsew')
     
     # 主循環
     form.mainloop()
