@@ -416,10 +416,8 @@ def view_history():
     # for record in records:
     #     print(f"{record[0]} | {record[1]} | {record[2]} | {record[3]}")
 
-
 if __name__ == '__main__':
     init_db()
-
     form = tk.Tk()
     # 視窗標題
     form.title('nhentai downloader')
@@ -429,20 +427,29 @@ if __name__ == '__main__':
     form.resizable(True, True)
 
     # 圖片檔路徑
-    image_path = "./真封面.jpg"  # 請換成自己的檔案路徑
+    # image_path = "./_bg.jpg"  # 請換成自己的檔案路徑
     # 讀取圖片並轉成 Tkinter 能使用的 PhotoImage
-    pil_image = Image.open('./真封面.jpg')  # 讀取本地檔案
-    # 如需縮放，可使用 pil_image.resize((width, height), Image.ANTIALIAS)
-    pil_image.resize((900, 900),  Image.Resampling.LANCZOS)
-    bg_image = ImageTk.PhotoImage(pil_image)
-
-
-
+    # ori_bg = Image.open(image_path)  # 讀取本地檔案
+    
+    # 建立 Canva 放置背景圖
+    canvas = tk.Canvas(form, highlightthickness=0)
+    canvas.place(x=0, y=0, relwidth=1, relheight=1)
+    # canvas.pack(fill='both', expand=True)
+    
+    # 使用 Notebook 元件實現頁面切換
+    notebook = ttk.Notebook(form)
+    notebook.place(x=0, y=0, relwidth=1, relheight=1)  # 疊在 canvas 上
+    
+    # 初始圖
+    # init_bg = ori_bg.resize((800, 800),  Image.Resampling.LANCZOS)
+    # form_init_bg = ImageTk.PhotoImage(init_bg)
+    # bg_image_id = canvas.create_image(0, 0, image=form_init_bg, anchor='nw')
+    # canvas.background = form_init_bg # 存著避免 GC
 
 
     # 使用 Notebook 元件實現頁面切換
-    notebook = ttk.Notebook(form)
-    notebook.pack(fill='both', expand=True)
+    # notebook = ttk.Notebook(form)
+    # notebook.pack(fill='both', expand=True)
 
     # first page: 單檔下載(可選擇下載頁數)
     page1 = ttk.Frame(notebook)
@@ -453,11 +460,15 @@ if __name__ == '__main__':
     page1.columnconfigure(1, weight=2)  # Entry 的列（主要佔用空間）
     page1.columnconfigure(2, weight=0)  # Button 的列（小比例，固定寬度）
 
-    # second page: 批量下載(不可選擇下載頁數)
+    
     # 建立一個 Label 充當背景
-    bg_label = ttk.Label(page1, image=bg_image)
-    bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-
+    # global bg_label
+    # bg_label = ttk.Label(page1, image=form_init_bg)
+    # bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+    # 監聽視窗大小變動 event
+    # form.bind("<Configure>", on_resize)
+    
+    
     # Label 元件 (改用 ttk.Label)
     url_label = ttk.Label(page1, text='神的六位數字或網址：')
     url_label.grid(row=0, column=0, padx=(5, 10), pady=10, sticky='e')
@@ -486,10 +497,6 @@ if __name__ == '__main__':
     end_page_label.grid(row=1, column=2, padx=(5, 10), pady=10, sticky='w')
     end_page = ttk.Entry(page1)
     end_page.grid(row=1, column=3, padx=5, pady=5, sticky='e')
-
-    # 配置行高比例
-    # page1.rowconfigure(1, weight=1)  # ScrolledText 所在行具有彈性空間
-
 
     # second page: 批量下載
     page2 = ttk.Frame(notebook)
@@ -531,3 +538,4 @@ if __name__ == '__main__':
 
     # 主循環
     form.mainloop()
+    
