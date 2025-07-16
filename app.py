@@ -100,6 +100,7 @@ def single_download():
         download_gallery(six_digits, base_download_folder, is_batch=False)
     except Exception as e:
         messagebox.showerror('錯誤', f'進行單檔下載時發生錯誤：{e}')
+        print(f'進行單檔下載時發生錯誤：{e}')
         return
 
     messagebox.showinfo('完成', '下載已完成！')
@@ -151,7 +152,7 @@ def single_download_LINE():
         htpp_get_img = 'https://script.google.com/macros/s/AKfycbwgqrIGx0QfwpmWz2MUp-LL8RAmVb5QK7G4uAhIPXA9u3IdZxACXJplRpH2G14t9N4/exec?to= U9de18aa02a082d52b9c8c1df420213d4&img='
         htpp_get_txt = 'https://script.google.com/macros/s/AKfycbwgqrIGx0QfwpmWz2MUp-LL8RAmVb5QK7G4uAhIPXA9u3IdZxACXJplRpH2G14t9N4/exec?to= U9de18aa02a082d52b9c8c1df420213d4&t='
         for out_url in image_urls:
-            LINE_response = requests.get(htpp_get_img+out_url)
+            LINE_response = requests.get(htpp_get_img + out_url)
             LINE_response.close()
         LINE_response = requests.get(htpp_get_txt+"LINE 訊息以全部發放完成")
         LINE_response.close()
