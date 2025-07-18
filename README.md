@@ -1,5 +1,4 @@
 # nhentai_downloader
-# Scripting 程式語言 第七組 n-hentai_downloader 文件說明
 
 ## 作業說明：
 
